@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+*.swp
+
+# App runtime data — contains user's Gemini API key and personal ECG recordings
+webapp/data/config.json
+webapp/data/records/
+
+# Never commit these directly, ever
+*.env
+*.key
+secrets/
+
+# Local scratch
+/tmp_scratch/
+*.local.*
+
+# Local-only
+.claude/
+comparisons/

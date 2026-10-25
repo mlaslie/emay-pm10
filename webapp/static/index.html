@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>EMAY PM10 · ECG</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <span class="logo">◉</span>
+    <h1>PM10 · ECG</h1>
+  </div>
+  <div class="header-actions">
+    <span id="device-status" class="pill pill-muted">Checking device…</span>
+    <button id="btn-sync" class="btn btn-primary">Sync from device</button>
+    <button id="btn-settings" class="btn btn-ghost" title="Settings">⚙</button>
+  </div>
+</header>
+
+<main id="app">
+  <section id="records-view">
+    <div id="records-empty" class="empty hidden">
+      <p>No recordings yet.</p>
+      <p class="muted">Plug the PM10 in, power it on, and click <b>Sync from device</b>.</p>
+    </div>
+    <div id="records-list"></div>
+  </section>
+
+  <section id="detail-view" class="hidden">
+    <div class="detail-header">
+      <button id="btn-back" class="btn btn-ghost">← Back</button>
+      <div id="detail-title-block">
+        <h2 id="detail-title"></h2>
+        <div class="detail-meta muted" id="detail-meta"></div>
+      </div>
+      <div class="detail-actions">
+        <button id="btn-analyze" class="btn btn-primary">Analyze with AI</button>
+        <button id="btn-pdf" class="btn">Download PDF</button>
+        <button id="btn-csv" class="btn">Download CSV</button>
+        <button id="btn-delete" class="btn btn-danger">Delete</button>
+      </div>
+    </div>
+    <div class="plot-frame" id="plot-frame">
+      <div class="plot-toolbar">
+        <div class="plot-toolbar-left">
+          <div class="view-toggle">
+            <button class="view-btn active" data-view="interactive">Interactive</button>
+            <button class="view-btn" data-view="clinical">Clinical</button>
+          </div>
+          <div id="range-presets">
+            <button class="btn btn-sm" data-range="all">All</button>
+            <button class="btn btn-sm" data-range="15">15 s</button>
+            <button class="btn btn-sm" data-range="10">10 s</button>
+            <button class="btn btn-sm" data-range="5">5 s</button>
+            <button class="btn btn-sm" data-range="2">2 s</button>
+            <span class="muted" style="margin-left:8px">Drag on chart to zoom · double-click to reset</span>
+          </div>
+        </div>
+        <div class="plot-toolbar-right">
+          <button id="btn-fullscreen" class="btn btn-sm" title="Toggle fullscreen">⛶ Fullscreen</button>
+        </div>
+      </div>
+      <div id="detail-plot" class="plotly-chart"></div>
+      <div id="clinical-view" class="clinical-view hidden">
+        <img class="clinical-strip" id="clinical-strip" alt="Clinical strip chart">
+        <div class="clinical-zooms" id="clinical-zooms"></div>
+        <p class="muted" style="margin-top:8px">Same images sent to the AI. Standard clinical grid: red 5 mm major / 1 mm minor. Strip at 25 mm/s × 10 mm/mV, zooms at 50 mm/s × 20 mm/mV.</p>
+      </div>
+    </div>
+    <div id="analysis-panel" class="analysis-panel hidden">
+      <h3>AI interpretation <span class="muted" id="analysis-model"></span></h3>
+      <div id="analysis-text" class="analysis-text"></div>
+      <div id="analysis-plots" class="analysis-plots"></div>
+      <details id="analysis-code-details" class="analysis-code hidden">
+        <summary>Code the AI ran <span class="muted" id="analysis-code-count"></span></summary>
+        <div id="analysis-code-blocks"></div>
+      </details>
+    </div>
+  </section>
+</main>
+
+<div id="settings-modal" class="modal hidden">
+  <div class="modal-body">
+    <div class="modal-header">
+      <h2>Settings</h2>
+      <button class="btn btn-ghost" data-close>×</button>
+    </div>
+    <div class="modal-content">
+      <h3>Gemini</h3>
+      <label>
+        API key
+        <input type="password" id="cfg-api-key" placeholder="paste new key (leave blank to keep current)" autocomplete="off">
+        <span id="cfg-api-status" class="muted"></span>
+      </label>
+      <label>
+        Model
+        <input type="text" id="cfg-model" placeholder="gemini-3.5-flash">
+      </label>
+
+      <h3>Signal filtering</h3>
+      <p class="muted" style="margin-top:-4px">Applied to the clinical strip / zooms / AI analysis / interactive chart. Raw samples are always preserved and available via the CSV download.</p>
+      <label class="checkbox-row">
+        <input type="checkbox" id="cfg-filter-enabled">
+        Bandpass filter (recommended for clean waveforms)
+      </label>
+      <div class="hr-row">
+        <label>
+          High-pass (Hz)
+          <input type="number" id="cfg-filter-hp" min="0.05" max="5" step="0.05">
+        </label>
+        <label>
+          Low-pass (Hz)
+          <input type="number" id="cfg-filter-lp" min="10" max="120" step="1">
+        </label>
+      </div>
+      <label class="checkbox-row">
+        <input type="checkbox" id="cfg-notch-enabled">
+        Notch filter (remove mains hum)
+      </label>
+      <label>
+        Notch frequency (Hz)
+        <input type="number" id="cfg-notch-hz" min="45" max="65" step="1">
+      </label>
+
+      <h3>Heart-rate alarm thresholds</h3>
+      <div class="hr-row">
+        <label>
+          Low (bpm)
+          <input type="number" id="cfg-hr-low" min="25" max="300">
+        </label>
+        <label>
+          High (bpm)
+          <input type="number" id="cfg-hr-high" min="25" max="300">
+        </label>
+      </div>
+
+      <div class="modal-footer">
+        <button id="btn-save-settings" class="btn btn-primary">Save settings</button>
+      </div>
+
+      <h3 style="margin-top:24px">Device recovery</h3>
+      <p class="muted">If the PM10's UI switched language, the filter is off, or recording isn't working, this sends the reverse-engineered restore packet: language=English, filter=ON, and the HR thresholds above.</p>
+      <button id="btn-restore-device" class="btn btn-warning">Send restore packet to device</button>
+      <pre id="restore-output" class="restore-output hidden"></pre>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
