@@ -31,10 +31,6 @@ It all runs locally in a small Flask app. The only thing that leaves your machin
 
 ![AI analysis](docs/screenshots/analysis.png)
 
-## One thing I didn't expect
-
-Running the same capture through two different frontier models turned up a bug in my own decoder. One model blamed an ST-segment dip on filtering; the other checked the raw bytes and found the decoder was dropping a bit from every sample and one sample from every packet. That's also how I learned the device actually records at 250 Hz, not 240. Comparing models turned out to be a useful way to catch my own mistakes, not only to read ECGs.
-
 ## Quick start
 
 ```bash
